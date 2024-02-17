@@ -1,36 +1,68 @@
 package server
 
 import (
-	"bufio"
 	"fmt"
+	"io"
 	"os/exec"
+	"sync"
+
+	"github.com/busyLambda/bbkk/internal/util"
+)
+
+var (
+  termMutex = &sync.Mutex{}
 )
 
 type McServer struct {
-	Path  string
-	Flags string
+  Cmd *exec.Cmd
+  Stdout io.ReadCloser
+  Wg sync.WaitGroup
 }
 
-func NewMcServer(path string, flags string) McServer {
+func NewMcServer(dir string, jar string, flags string) McServer {
+  c := util.JavaCmd(dir, jar, flags)
+  
 	return McServer{
-		Path:  path,
-		Flags: flags,
+    Cmd: c,
 	}
 }
 
-// TODO: Make this multithreaded.
-func (ms *McServer) Start() {
-	cmd := exec.Command("java", "-jar", ms.Flags)
-	cmd.Dir = ms.Path
+func (ms *McServer) Start(wg *sync.WaitGroup) {
+  defer wg.Done()
 
-	stdout, _ := cmd.StdoutPipe()
-	cmd.Start()
+  sp, err := ms.Cmd.StdoutPipe()
+  ms.Stdout = sp
+  if err != nil {
+    println("Error creating stdout pipe.")
+  }
 
-	scanner := bufio.NewScanner(stdout)
-	for scanner.Scan() {
-		m := scanner.Text()
-		fmt.Println(m)
-	}
+	ms.Cmd.Start()
 
-	cmd.Wait()
+  ms.ReadStdout()
+
+  ms.Cmd.Wait()
 }
+
+// TODO: Use channels to send le funny data :3
+func (ms *McServer) ReadStdout() {
+  if ms.Cmd.ProcessState != nil {
+    if ms.Cmd.ProcessState.Exited() {
+      return
+    }
+  }
+
+  buf := make([]byte, 1024)
+  for {
+    n, err := ms.Stdout.Read(buf)
+    if err != nil {
+      if err != io.EOF {
+        fmt.Print("-> Error reading from stdout :<")
+      }
+      break
+    }
+    fmt.Printf(string(buf[:n]))
+  }
+}
+
+// TODO: Write the function :3
+func WriteStdin(s string) {}
