@@ -9,10 +9,6 @@ import (
 	"github.com/busyLambda/bbkk/internal/util"
 )
 
-var (
-  termMutex = &sync.Mutex{}
-)
-
 type McServer struct {
   Cmd *exec.Cmd
   Stdout io.ReadCloser
@@ -38,13 +34,28 @@ func (ms *McServer) Start(wg *sync.WaitGroup) {
 
 	ms.Cmd.Start()
 
-  ms.ReadStdout()
+  outchan := make(chan string)
+
+  go ms.ReadStdout(outchan)
+
+  var wg_internal sync.WaitGroup
+  wg_internal.Add(1)
+
+  go func() {
+    defer wg_internal.Done()
+    for {
+      select {
+        case data := <-outchan:
+        fmt.Printf(data)
+      }
+    }
+  }()
 
   ms.Cmd.Wait()
+  wg_internal.Wait()
 }
 
-// TODO: Use channels to send le funny data :3
-func (ms *McServer) ReadStdout() {
+func (ms *McServer) ReadStdout(output chan<-string) {
   if ms.Cmd.ProcessState != nil {
     if ms.Cmd.ProcessState.Exited() {
       return
@@ -60,7 +71,7 @@ func (ms *McServer) ReadStdout() {
       }
       break
     }
-    fmt.Printf(string(buf[:n]))
+    output <- string(buf[:n])
   }
 }
 
