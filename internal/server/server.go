@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"io"
+	"log"
 	"os/exec"
 	"sync"
 
@@ -12,6 +13,7 @@ import (
 type McServer struct {
   Cmd *exec.Cmd
   Stdout io.ReadCloser
+  Stdin io.WriteCloser
   Wg sync.WaitGroup
 }
 
@@ -23,44 +25,56 @@ func NewMcServer(dir string, jar string, flags string) McServer {
 	}
 }
 
-func (ms *McServer) Start(wg *sync.WaitGroup) {
-  defer wg.Done()
-
+func (ms *McServer) SetStdout() error {
   sp, err := ms.Cmd.StdoutPipe()
-  ms.Stdout = sp
   if err != nil {
-    println("Error creating stdout pipe.")
+    return err
   }
 
-	ms.Cmd.Start()
+  ms.Stdout = sp
+  return nil
+}
 
-  outchan := make(chan string)
+func (ms *McServer) SetStdin() error {
+  sp, err := ms.Cmd.StdinPipe()
+  if err != nil {
+    return err
+  }
+  ms.Stdin = sp
+  return nil
+}
 
-  go ms.ReadStdout(outchan)
+func (ms *McServer) Start(wg *sync.WaitGroup) {
+  defer wg.Done()
+ 
+  err := ms.SetStdout()
+  if err != nil {
+    fmt.Printf("Error with le stdout pipe: %s\n", err)
+  }
 
-  var wg_internal sync.WaitGroup
-  wg_internal.Add(1)
+  err = ms.SetStdin()
+  if err != nil {
+    fmt.Printf("Error with le stdin pipe: %s\n", err)
+  }
 
-  go func() {
-    defer wg_internal.Done()
-    for {
-      select {
-        case data := <-outchan:
-        fmt.Printf(data)
-      }
-    }
-  }()
+  err = ms.Cmd.Start()
+  if err != nil {
+    fmt.Println("Error starting java.")
+  }
 
   ms.Cmd.Wait()
-  wg_internal.Wait()
+
+  return
 }
 
 func (ms *McServer) ReadStdout(output chan<-string) {
+  log.Printf("Checking process...")
   if ms.Cmd.ProcessState != nil {
     if ms.Cmd.ProcessState.Exited() {
       return
     }
   }
+  log.Printf("Streaming :3")
 
   buf := make([]byte, 1024)
   for {
@@ -75,5 +89,10 @@ func (ms *McServer) ReadStdout(output chan<-string) {
   }
 }
 
-// TODO: Write the function :3
-func WriteStdin(s string) {}
+func (ms *McServer) WriteStdin(r rune) (err error) {
+  _, err = ms.Stdin.Write([]byte{byte(r)}); return
+}
+
+func (ms *McServer) WriteString(s string) (err error) {
+  _, err = ms.Stdin.Write([]byte(s)); return
+}
