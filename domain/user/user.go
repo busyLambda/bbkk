@@ -2,6 +2,7 @@ package user
 
 import (
 	"github.com/busyLambda/bbkk/domain"
+	"github.com/busyLambda/bbkk/internal/util"
 )
 
 type Username = string
@@ -31,6 +32,11 @@ func NewPassword(p string) (pw Password, err error) {
 
 	if len(p) < 12 {
 		err = &domain.TooShort{}
+		return
+	}
+
+	p, err = util.HashPassword(p)
+	if err != nil {
 		return
 	}
 
