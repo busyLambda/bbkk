@@ -16,7 +16,7 @@ func (d *DbManager) DeleteServer(id int) error {
 }
 
 func (d *DbManager) GetServerByID(id int) (s models.Server, err error) {
-	err = d.Conn.Where("id = ?").First(&s).Error
+	err = d.Conn.Where("id = ?", id).First(&s).Error
 	return
 }
 

@@ -17,5 +17,4 @@ func NewApiMaster() App {
 }
 
 func (a *App) AttachRoutes() {
-
 }
