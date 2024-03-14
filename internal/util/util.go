@@ -39,6 +39,6 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 type RegistrationForm struct {
-	Username string
-	Password string
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
