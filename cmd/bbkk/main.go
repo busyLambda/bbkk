@@ -1,41 +1,42 @@
 package main
 
-import (
-	"fmt"
-	"sync"
-	"time"
-
-	"github.com/busyLambda/bbkk/internal/server"
-)
+import "github.com/busyLambda/bbkk/internal/api"
 
 func main() {
-  var wg sync.WaitGroup
+	app := api.NewApiMaster()
 
-	mcServer := server.NewMcServer("server", "paper.jar", "")
+	app.AttachRoutes()
 
-  wg.Add(1)
-  go mcServer.Start(&wg)
+	app.Run()
+	/*
+		var wg sync.WaitGroup
 
-  outchan := make(chan string)
+		mcServer := server.NewMcServer("server", "paper.jar", "")
 
-  if mcServer.Stdout == nil {
-    fmt.Printf("No stdout, setting it...\n")
-    mcServer.SetStdout()
-  }
+		wg.Add(1)
+		go mcServer.Start(&wg)
 
-  go mcServer.ReadStdout(outchan)
+		outchan := make(chan string)
 
-  go func() {
-    for {
-      select {
-        case data := <-outchan:
-        fmt.Printf(data)
-      }
-    }
-  }()
+		if mcServer.Stdout == nil {
+			fmt.Printf("No stdout, setting it...\n")
+			mcServer.SetStdout()
+		}
 
-  time.Sleep(1 * time.Second)
-  mcServer.WriteString("stop\n")
-  
-  wg.Wait()
+		go mcServer.ReadStdout(outchan)
+
+		go func() {
+			for {
+				select {
+				case data := <-outchan:
+					fmt.Printf(data)
+				}
+			}
+		}()
+
+		time.Sleep(1 * time.Second)
+		mcServer.WriteString("stop\n")
+
+		wg.Wait()
+	*/
 }
