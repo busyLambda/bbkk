@@ -25,5 +25,10 @@ func NewDbManager(host string, user string, password string, dbName string, port
 		panic("Cannot migrate `models.User`")
 	}
 
+	err = db.AutoMigrate(models.Server{})
+	if err != nil {
+		panic("Cannot migrate `models.Server`")
+	}
+
 	return &DbManager{Conn: db}
 }

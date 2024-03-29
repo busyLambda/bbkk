@@ -8,13 +8,12 @@ import (
 
 type Server struct {
 	gorm.Model
-	Name    server.ServerName
-	Profile config.ServerProfile
+	Name server.ServerName
 }
 
+// TODO: Rework the profile system.
 func NewServer(sp config.ServerProfile, sn server.ServerName, m uint) Server {
 	return Server{
-		Name:    sn,
-		Profile: sp,
+		Name: sn,
 	}
 }
