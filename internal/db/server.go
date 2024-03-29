@@ -24,3 +24,8 @@ func (d *DbManager) GetServerByName(sn string) (s models.Server, err error) {
 	err = d.Conn.Where("name = ?", sn).First(&s).Error
 	return
 }
+
+func (d *DbManager) GetAllServers() (servers []models.Server, err error) {
+	err = d.Conn.Find(&servers).Error
+	return
+}

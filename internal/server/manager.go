@@ -7,48 +7,55 @@ import (
 
 // TODO: Possibly make locks so that we don't have two clients opening em up
 type ServerManager struct {
-  Servers map[string]*McServer
-  Wg *sync.WaitGroup
+	Servers map[uint]*McServer
+	Wg      *sync.WaitGroup
 }
 
-func (sm *ServerManager) GetServer(id string) *McServer {
-  return sm.Servers[id]
+func NewServerManager() *ServerManager {
+	return &ServerManager{
+		Servers: make(map[uint]*McServer),
+		Wg:      &sync.WaitGroup{},
+	}
 }
 
-func (sm *ServerManager) AddServer(id string, server *McServer) {
-  sm.Servers[id] = server
+func (sm *ServerManager) GetServer(id uint) *McServer {
+	return sm.Servers[id]
 }
 
-func (sm *ServerManager) StartServer(id string) error {
-  s := sm.GetServer(id)
-  if s == nil {
-    return fmt.Errorf("Server not found")
-  }
-
-  go s.Start(sm.Wg)
-
-  s.SetStdout()
-  s.SetStdin()
-
-  return nil
+func (sm *ServerManager) AddServer(id uint, server *McServer) {
+	sm.Servers[id] = server
 }
 
-func (sm *ServerManager) ReadStdout(id string, c chan string) {
-  s := sm.GetServer(id)
+func (sm *ServerManager) StartServer(id uint) error {
+	s := sm.GetServer(id)
+	if s == nil {
+		return fmt.Errorf("server not found")
+	}
 
-  if s.Stdout == nil {
-    s.SetStdout()
-  }
+	go s.Start(sm.Wg)
 
-  s.ReadStdout(c)
+	s.SetStdout()
+	s.SetStdin()
+
+	return nil
 }
 
-func (sm *ServerManager) WriteStdout(id string, r rune) error {
-  s := sm.GetServer(id)
+func (sm *ServerManager) ReadStdout(id uint, c chan string) {
+	s := sm.GetServer(id)
 
-  if s.Stdin == nil {
-    s.SetStdin()
-  }
+	if s.Stdout == nil {
+		s.SetStdout()
+	}
 
-  return s.WriteStdin(r)
+	s.ReadStdout(c)
+}
+
+func (sm *ServerManager) WriteStdout(id uint, r rune) error {
+	s := sm.GetServer(id)
+
+	if s.Stdin == nil {
+		s.SetStdin()
+	}
+
+	return s.WriteStdin(r)
 }
