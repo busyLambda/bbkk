@@ -4,10 +4,13 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 
 	"github.com/busyLambda/bbkk/internal/db"
 	"github.com/busyLambda/bbkk/internal/server"
 	"github.com/go-chi/chi"
+	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 )
 
@@ -18,7 +21,25 @@ type App struct {
 }
 
 func NewApiMaster() App {
-	db := db.NewDbManager("localhost", "unkindled", "CoCk1234", "bbkk_dev", 5432, "Europe/Budapest")
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %s", err)
+	}
+
+	host := os.Getenv("BBKK_DB_HOST")
+	port_var := os.Getenv("BBKK_DB_PORT")
+
+	port, err := strconv.ParseUint(port_var, 10, 32)
+	if err != nil {
+		log.Fatalf("Error parsing port: %s from env var %s", err, port_var)
+	}
+
+	username := os.Getenv("BBKK_DB_USER")
+	dbname := os.Getenv("BBKK_DB_NAME")
+	pass := os.Getenv("BBKK_DB_PASS")
+	locale := os.Getenv("BBKK_DB_LOCALE")
+
+	db := db.NewDbManager(host, username, pass, dbname, uint(port), locale)
 
 	log.Println("Connected to database, getting servers.")
 
