@@ -16,7 +16,7 @@ type User struct {
 	Role     user.Role
 }
 
-func NewUser(rf util.RegistrationForm) (u User, err error) {
+func NewUser(rf util.RegistrationForm, role user.Role) (u User, err error) {
 	pw, err := user.NewPassword(rf.Password)
 	if err != nil {
 		return
@@ -28,6 +28,8 @@ func NewUser(rf util.RegistrationForm) (u User, err error) {
 		return
 	}
 	u.Username = un
+
+	u.Role = role
 
 	return
 }
