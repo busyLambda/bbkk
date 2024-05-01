@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/busyLambda/bbkk/domain/user"
 	"github.com/busyLambda/bbkk/internal/models"
 	"github.com/busyLambda/bbkk/internal/util"
 	"github.com/go-chi/chi"
@@ -19,13 +20,13 @@ func (a *App) createUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := models.NewUser(rf)
+	u, err := models.NewUser(rf, user.ADMIN)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = a.db.InsertUser(u)
+	err = a.db.InsertUser(&u)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
