@@ -2,8 +2,8 @@ package db
 
 import "github.com/busyLambda/bbkk/internal/models"
 
-func (d *DbManager) InsertServer(s models.Server) error {
-	return d.Conn.Create(&s).Error
+func (d *DbManager) InsertServer(s *models.Server) error {
+	return d.Conn.Create(s).Error
 }
 
 func (d *DbManager) DeleteServer(id int) error {

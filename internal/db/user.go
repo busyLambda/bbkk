@@ -4,8 +4,8 @@ import (
 	"github.com/busyLambda/bbkk/internal/models"
 )
 
-func (d *DbManager) InsertUser(u models.User) error {
-	return d.Conn.Create(&u).Error
+func (d *DbManager) InsertUser(u *models.User) error {
+	return d.Conn.Create(u).Error
 }
 
 func (d *DbManager) DeleteUser(id int) error {
