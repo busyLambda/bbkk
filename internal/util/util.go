@@ -10,7 +10,7 @@ import (
 
 // Formats the flags and the jar args to java so that it's executed properly.
 func JavaCmd(dir string, jar string, flags string) *exec.Cmd {
-	e := []string{"-jar", jar}
+	e := []string{"--nogui", "-jar", jar}
 
 	j := strings.ReplaceAll(flags, "\n", " ")
 
@@ -33,7 +33,7 @@ func HashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
-func CheckPasswordHash(password, hash string) bool {
+func CheckPasswordHash(password string, hash string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
 	return err == nil
 }
@@ -42,3 +42,15 @@ type RegistrationForm struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+
+type LoginForm struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type ServerForm struct {
+	Name         string `json:"name"`
+	DedicatedRam uint   `json:"dedicated_ram"`
+}
+
+type UserKey struct{}
