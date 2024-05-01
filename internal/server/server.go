@@ -11,10 +11,11 @@ import (
 )
 
 type McServer struct {
-	Cmd    *exec.Cmd
-	Stdout io.ReadCloser
-	Stdin  io.WriteCloser
-	Wg     sync.WaitGroup
+	Cmd       *exec.Cmd
+	Stdout    io.ReadCloser
+	Stdin     io.WriteCloser
+	streaming bool
+	Wg        sync.WaitGroup
 }
 
 func NewMcServer(dir string, jar string, flags string) *McServer {
@@ -23,6 +24,10 @@ func NewMcServer(dir string, jar string, flags string) *McServer {
 	return &McServer{
 		Cmd: c,
 	}
+}
+
+func (ms *McServer) IsStreaming() bool {
+	return ms.streaming
 }
 
 func (ms *McServer) SetStdout() error {
@@ -65,6 +70,10 @@ func (ms *McServer) Start(wg *sync.WaitGroup) {
 	ms.Cmd.Wait()
 }
 
+func (ms *McServer) StopStdout() {
+	ms.streaming = false
+}
+
 func (ms *McServer) ReadStdout(output chan<- string) {
 	log.Printf("Checking process...")
 	if ms.Cmd.ProcessState != nil {
@@ -73,6 +82,8 @@ func (ms *McServer) ReadStdout(output chan<- string) {
 		}
 	}
 	log.Printf("Streaming :3")
+
+	ms.streaming = true
 
 	buf := make([]byte, 1024)
 	for {
