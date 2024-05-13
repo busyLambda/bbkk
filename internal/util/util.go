@@ -1,16 +1,29 @@
 package util
 
 import (
+	"fmt"
 	"log"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
+func GetMemoryUsageByPID(pid int) (int, error) {
+	c := fmt.Sprintf("cat /proc/%d/statm | grep RSS | awk '{print $2}'", pid)
+	cmd := exec.Command("bash", "-c", c)
+	mstr, err := cmd.Output()
+	if err != nil {
+		return 0, err
+	}
+
+	return strconv.Atoi(string(mstr))
+}
+
 // Formats the flags and the jar args to java so that it's executed properly.
 func JavaCmd(dir string, jar string, flags string) *exec.Cmd {
-	e := []string{"--nogui", "-jar", jar}
+	e := []string{"-jar", jar}
 
 	j := strings.ReplaceAll(flags, "\n", " ")
 
@@ -26,6 +39,10 @@ func JavaCmd(dir string, jar string, flags string) *exec.Cmd {
 	c.Dir = dir
 
 	return c
+}
+
+func ServerDirName(name string, id string) string {
+	return fmt.Sprintf("%s-%s", name, id)
 }
 
 func HashPassword(password string) (string, error) {
@@ -54,3 +71,8 @@ type ServerForm struct {
 }
 
 type UserKey struct{}
+
+type ServerStats struct {
+	IsRunning bool `json:"is_running"`
+	MemUse    uint `json:"mem_use"`
+}

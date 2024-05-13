@@ -2,10 +2,12 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/busyLambda/bbkk/internal/models"
 	"github.com/busyLambda/bbkk/internal/server"
@@ -14,10 +16,24 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  256,
-	WriteBufferSize: 256,
-	WriteBufferPool: &sync.Pool{},
+func (a *App) startServer(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	sid, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s := a.sm.GetServer(uint(sid))
+
+	var wg sync.WaitGroup
+
+	wg.Add(1)
+
+	go s.Start(&wg)
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (a *App) createServer(w http.ResponseWriter, r *http.Request) {
@@ -44,9 +60,9 @@ func (a *App) createServer(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) getServerByName(w http.ResponseWriter, r *http.Request) {
-	n := chi.URLParam(r, "name")
+	q := chi.URLParam(r, "query")
 
-	s, err := a.db.GetServerByName(n)
+	s, err := a.db.GetServerByName(q)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -67,7 +83,12 @@ func (a *App) getAllServers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(s)
 }
 
-func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
+// func getServerCount(w http.ResponseWriter, r *http.Request) {
+// 	q := chi.URLParam(r, "query")
+// }
+
+func (a *App) statusReport(w http.ResponseWriter, r *http.Request) {
+	log.Println("WE GET HERE.")
 	id := chi.URLParam(r, "id")
 	sid, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
@@ -78,7 +99,60 @@ func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
 	s := a.sm.GetServer(uint(sid))
 
 	// Use gorilla to get a websocket connection.
-	c, err := upgrader.Upgrade(w, r, nil)
+	c, err := a.up.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println("ERROR: ", err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("Success... so far anyway.")
+
+	go statusReportStream(c, s)
+}
+
+func statusReportStream(c *websocket.Conn, s *server.McServer) {
+	defer c.Close()
+
+	for {
+		time.Sleep(time.Second)
+
+		/*_, message, err := c.ReadMessage()
+		if err != nil {
+			log.Println("read:", err)
+			break
+		}
+		log.Printf("recv: %s", message)*/
+
+		if !s.IsRunning() {
+			c.WriteMessage(websocket.TextMessage, []byte(`{"is_running": false}`))
+			continue
+		}
+
+		memuse, err := util.GetMemoryUsageByPID(s.Cmd.Process.Pid)
+		if err != nil {
+			log.Println(err)
+			c.WriteMessage(websocket.TextMessage, []byte(`{"failure": true}`))
+			continue
+		}
+
+		c.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(`{"is_running": true, "mem_use": %d}`, memuse)))
+
+		log.Println("SEC")
+	}
+}
+
+func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	sid, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s := a.sm.GetServer(uint(sid))
+
+	c, err := a.up.Upgrade(w, r, nil)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

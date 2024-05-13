@@ -1,6 +1,8 @@
 package db
 
-import "github.com/busyLambda/bbkk/internal/models"
+import (
+	"github.com/busyLambda/bbkk/internal/models"
+)
 
 func (d *DbManager) InsertServer(s *models.Server) error {
 	return d.Conn.Create(s).Error
@@ -20,8 +22,8 @@ func (d *DbManager) GetServerByID(id int) (s models.Server, err error) {
 	return
 }
 
-func (d *DbManager) GetServerByName(sn string) (s models.Server, err error) {
-	err = d.Conn.Where("name = ?", sn).First(&s).Error
+func (d *DbManager) GetServerByName(sn string) (s []models.Server, err error) {
+	err = d.Conn.Where("name LIKE ?", sn+"%").Find(&s).Error
 	return
 }
 

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/busyLambda/bbkk/internal/models"
@@ -35,6 +36,8 @@ func (a *App) authMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+// TODO: Use a token with a key that we can use to validate the session and also still check the user in the DB.
+// TODO: return user.ID and user.Username as JSON.
 func (a *App) login(w http.ResponseWriter, r *http.Request) {
 	var login util.LoginForm
 
@@ -63,6 +66,33 @@ func (a *App) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(s.ID))
+	cookie := http.Cookie{
+		Domain:   "localhost",
+		Name:     "session",
+		Value:    s.ID,
+		HttpOnly: true,
+	}
+
+	http.SetCookie(w, &cookie)
+
+  resp := map[string]string{
+    "id": fmt.Sprint(u.ID),
+    "username": u.Username,
+  }
+
+	w.Header().Set("Content-Type", "application/json")
+  err = json.NewEncoder(w).Encode(resp)
+  if err != nil {
+    http.Error(w, err.Error(), http.StatusInternalServerError)
+    return
+  }
+}
+
+// TODO: Don't respond with the whole user.
+func (a *App) validateSession(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(util.UserKey{})
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Add("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
 }

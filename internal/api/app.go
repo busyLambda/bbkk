@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/busyLambda/bbkk/domain/user"
 	"github.com/busyLambda/bbkk/internal/db"
@@ -13,6 +14,8 @@ import (
 	"github.com/busyLambda/bbkk/internal/server"
 	"github.com/busyLambda/bbkk/internal/util"
 	"github.com/go-chi/chi"
+	"github.com/go-chi/cors"
+	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 )
@@ -21,6 +24,7 @@ type App struct {
 	r  *chi.Mux
 	db *db.DbManager
 	sm *server.ServerManager
+  up *websocket.Upgrader
 }
 
 func NewApiMaster() App {
@@ -108,20 +112,43 @@ func NewApiMaster() App {
 		log.Println("Finished getting servers.")
 		i := 1
 		for _, s := range servers {
-			log.Printf("[%d.]: %s\n", i, s.Name)
-			sm.AddServer(s.ID, server.NewMcServer(s.Name, "", ""))
+			log.Printf("[%d]: %s\n", i, s.Name)
+			sm.AddServer(s.ID, server.NewMcServer(util.ServerDirName(s.Name, strconv.FormatUint(uint64(s.ID), 10)), "server.jar", ""))
 			i++
 		}
 	}
+  upgrader := websocket.Upgrader{
+	  ReadBufferSize:  256,
+	  WriteBufferSize: 256,
+	  WriteBufferPool: &sync.Pool{},
+  }
+
+  upgrader.CheckOrigin = func (r *http.Request) bool {
+    return true
+  }
+
 
 	return App{
 		r:  chi.NewRouter(),
 		db: db,
 		sm: sm,
+    up: &upgrader,
+
 	}
 }
 
 func (a *App) AttachRoutes() {
+	a.r.Use(cors.Handler(
+		cors.Options{
+			AllowedOrigins:   []string{"https://localhost:5173", "http://localhost:5173"},
+			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+			ExposedHeaders:   []string{"Link"},
+			AllowCredentials: true,
+			MaxAge:           300,
+		},
+	))
+
 	a.r.Post("/register", a.createUser)
 	a.r.Post("/login", a.login)
 
@@ -131,7 +158,17 @@ func (a *App) AttachRoutes() {
 
 	serverApi.Get("/console/{id}", a.openConsole)
 	serverApi.Post("/create", a.createServer)
+  serverApi.Get("/name/{query}", a.getServerByName)
+  serverApi.Get("/all", a.getAllServers)
+  serverApi.Get("/start/{id}", a.startServer)
+  serverApi.Get("/statusreport/{id}", a.statusReport)
 
+	access := chi.NewRouter()
+
+	access.Use(a.authMiddleware)
+	access.Get("/validate", a.validateSession)
+
+	a.r.Mount("/", access)
 	a.r.Mount("/server", serverApi)
 }
 
