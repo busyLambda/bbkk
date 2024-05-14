@@ -10,15 +10,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func GetMemoryUsageByPID(pid int) (int, error) {
-	c := fmt.Sprintf("cat /proc/%d/statm | grep RSS | awk '{print $2}'", pid)
+func GetRssByPid(pid int) (int, error) {
+	c := fmt.Sprintf("cat /proc/%d/status | grep RSS | awk '{print $2}'", pid)
 	cmd := exec.Command("bash", "-c", c)
 	mstr, err := cmd.Output()
 	if err != nil {
 		return 0, err
 	}
 
-	return strconv.Atoi(string(mstr))
+	return strconv.Atoi(strings.Replace(string(mstr), "\n", "", 1))
 }
 
 // Formats the flags and the jar args to java so that it's executed properly.

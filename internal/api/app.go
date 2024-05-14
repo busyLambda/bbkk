@@ -24,7 +24,7 @@ type App struct {
 	r  *chi.Mux
 	db *db.DbManager
 	sm *server.ServerManager
-  up *websocket.Upgrader
+	up *websocket.Upgrader
 }
 
 func NewApiMaster() App {
@@ -117,23 +117,21 @@ func NewApiMaster() App {
 			i++
 		}
 	}
-  upgrader := websocket.Upgrader{
-	  ReadBufferSize:  256,
-	  WriteBufferSize: 256,
-	  WriteBufferPool: &sync.Pool{},
-  }
+	upgrader := websocket.Upgrader{
+		ReadBufferSize:  256,
+		WriteBufferSize: 256,
+		WriteBufferPool: &sync.Pool{},
+	}
 
-  upgrader.CheckOrigin = func (r *http.Request) bool {
-    return true
-  }
-
+	upgrader.CheckOrigin = func(r *http.Request) bool {
+		return true
+	}
 
 	return App{
 		r:  chi.NewRouter(),
 		db: db,
 		sm: sm,
-    up: &upgrader,
-
+		up: &upgrader,
 	}
 }
 
@@ -158,10 +156,11 @@ func (a *App) AttachRoutes() {
 
 	serverApi.Get("/console/{id}", a.openConsole)
 	serverApi.Post("/create", a.createServer)
-  serverApi.Get("/name/{query}", a.getServerByName)
-  serverApi.Get("/all", a.getAllServers)
-  serverApi.Get("/start/{id}", a.startServer)
-  serverApi.Get("/statusreport/{id}", a.statusReport)
+	serverApi.Get("/name/{query}", a.getServerByName)
+	serverApi.Get("/all", a.getAllServers)
+	serverApi.Get("/start/{id}", a.startServer)
+	serverApi.Get("/statusreport/{id}", a.statusReport)
+	serverApi.Get("/stop/{id}", a.stopServer)
 
 	access := chi.NewRouter()
 

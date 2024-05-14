@@ -57,5 +57,5 @@ func (sm *ServerManager) WriteStdout(id uint, r rune) error {
 		s.SetStdin()
 	}
 
-	return s.WriteStdin(r)
+	return s.WriteRune(r)
 }

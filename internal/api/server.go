@@ -36,6 +36,20 @@ func (a *App) startServer(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func (a *App) stopServer(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	sid, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s := a.sm.GetServer(uint(sid))
+
+	s.StopServer()
+}
+
 func (a *App) createServer(w http.ResponseWriter, r *http.Request) {
 	var sf util.ServerForm
 
@@ -114,22 +128,32 @@ func (a *App) statusReport(w http.ResponseWriter, r *http.Request) {
 func statusReportStream(c *websocket.Conn, s *server.McServer) {
 	defer c.Close()
 
+	// Used to decide if we need to report if the server is running.
+	// report_r := true
+
+	go func() {
+		for {
+			_, _, err := c.ReadMessage()
+			if err != nil {
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+					log.Println("Client disconnected")
+				} else {
+					log.Println("Error reading message:", err)
+				}
+				return
+			}
+		}
+	}()
+
 	for {
 		time.Sleep(time.Second)
 
-		/*_, message, err := c.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			break
-		}
-		log.Printf("recv: %s", message)*/
-
 		if !s.IsRunning() {
-			c.WriteMessage(websocket.TextMessage, []byte(`{"is_running": false}`))
+			c.WriteMessage(websocket.TextMessage, []byte(`{"not_running": true}`))
 			continue
 		}
 
-		memuse, err := util.GetMemoryUsageByPID(s.Cmd.Process.Pid)
+		memuse, err := util.GetRssByPid(s.Cmd.Process.Pid)
 		if err != nil {
 			log.Println(err)
 			c.WriteMessage(websocket.TextMessage, []byte(`{"failure": true}`))
@@ -137,8 +161,6 @@ func statusReportStream(c *websocket.Conn, s *server.McServer) {
 		}
 
 		c.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf(`{"is_running": true, "mem_use": %d}`, memuse)))
-
-		log.Println("SEC")
 	}
 }
 

@@ -16,16 +16,16 @@ type McServer struct {
 	Stdin     io.WriteCloser
 	streaming bool
 	Wg        sync.WaitGroup
-  isRunning bool
+	isRunning bool
 }
 
 func NewMcServer(dir string, jar string, flags string) *McServer {
 	c := util.JavaCmd(dir, jar, flags)
 
 	return &McServer{
-		Cmd: c,
-    isRunning: false,
-    streaming: false,
+		Cmd:       c,
+		isRunning: false,
+		streaming: false,
 	}
 }
 
@@ -54,7 +54,7 @@ func (ms *McServer) SetStdin() error {
 
 // IDEA: Could try to cat PID as well just to make extra sure (in OR).
 func (ms *McServer) IsRunning() bool {
-  return ms.isRunning
+	return ms.isRunning
 }
 
 func (ms *McServer) Start(wg *sync.WaitGroup) {
@@ -70,16 +70,24 @@ func (ms *McServer) Start(wg *sync.WaitGroup) {
 		fmt.Printf("Error with le stdin pipe: %s\n", err)
 	}
 
-  ms.isRunning = true
+	ms.isRunning = true
 	err = ms.Cmd.Start()
 	if err != nil {
-    ms.isRunning = false
-    log.Printf("Error starting java: %s\n", err.Error())
+		ms.isRunning = false
+		log.Printf("Error starting java: %s\n", err.Error())
 	}
 
 	ms.Cmd.Wait()
 
-  ms.isRunning = false
+	ms.isRunning = false
+}
+
+func (ms *McServer) StopServer() {
+	ms.StopStdout()
+
+	// TODO: Have to like time it so that we only set it to false if it's really not running.
+	ms.WriteString("stop\n")
+	ms.isRunning = false
 }
 
 func (ms *McServer) StopStdout() {
@@ -110,9 +118,7 @@ func (ms *McServer) ReadStdout(output chan<- string) {
 	}
 }
 
-
-
-func (ms *McServer) WriteStdin(r rune) (err error) {
+func (ms *McServer) WriteRune(r rune) (err error) {
 	_, err = ms.Stdin.Write([]byte{byte(r)})
 	return
 }
