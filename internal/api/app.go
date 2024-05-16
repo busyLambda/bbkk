@@ -147,28 +147,28 @@ func (a *App) AttachRoutes() {
 		},
 	))
 
-	a.r.Post("/register", a.createUser)
-	a.r.Post("/login", a.login)
-
+	// TODO: Make it one middleware `Use()`
 	serverApi := chi.NewRouter()
-
 	serverApi.Use(a.authMiddleware)
+	userApi := chi.NewRouter()
+	userApi.Use(a.authMiddleware)
+	accessApi := chi.NewRouter()
+	accessApi.Use(a.authMiddleware)
 
-	serverApi.Get("/console/{id}", a.openConsole)
-	serverApi.Post("/create", a.createServer)
-	serverApi.Get("/name/{query}", a.getServerByName)
-	serverApi.Get("/all", a.getAllServers)
-	serverApi.Get("/start/{id}", a.startServer)
-	serverApi.Get("/statusreport/{id}", a.statusReport)
-	serverApi.Get("/stop/{id}", a.stopServer)
+	a.r.Post("/login", a.login)                         // POST /login
+	serverApi.Get("/console/{id}", a.openConsole)       // GET  /server/console/{id}
+	serverApi.Post("/create", a.createServer)           // POST /server/create
+	serverApi.Get("/name/{query}", a.getServerByName)   // GET  /server/name/{query}
+	serverApi.Get("/all", a.getAllServers)              // GET  /server/all
+	serverApi.Get("/start/{id}", a.startServer)         // GET  /server/start/{id}
+	serverApi.Get("/statusreport/{id}", a.statusReport) // GET  /server/statusreport/{id}
+	serverApi.Get("/stop/{id}", a.stopServer)           // GET  /server/stop/{id}
+	accessApi.Get("/validate", a.validateSession)       // GET  /validate
+	userApi.Get("/create", a.createUser)                // POST /user/create
 
-	access := chi.NewRouter()
-
-	access.Use(a.authMiddleware)
-	access.Get("/validate", a.validateSession)
-
-	a.r.Mount("/", access)
-	a.r.Mount("/server", serverApi)
+	a.r.Mount("/", accessApi)       // Protected
+	a.r.Mount("/user", userApi)     // Protected
+	a.r.Mount("/server", serverApi) // Protected
 }
 
 func (a *App) Run(port uint) {
