@@ -87,6 +87,25 @@ func (ms *McServer) StopServer() {
 
 	// TODO: Have to like time it so that we only set it to false if it's really not running.
 	ms.WriteString("stop\n")
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	// Wait till the Jar process actually stops.
+	go func(wg *sync.WaitGroup) {
+		defer wg.Done()
+
+		for {
+			if !ms.IsRunning() {
+				break
+			}
+		}
+	}(&wg)
+
+	wg.Wait()
+
+	// Reset the cmd to be able to run it again later.
+	ms.Cmd = util.JavaCmd(ms.Cmd.Dir, "server.jar", "")
 	ms.isRunning = false
 }
 
