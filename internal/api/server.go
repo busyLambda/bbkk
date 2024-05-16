@@ -97,10 +97,6 @@ func (a *App) getAllServers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(s)
 }
 
-// func getServerCount(w http.ResponseWriter, r *http.Request) {
-// 	q := chi.URLParam(r, "query")
-// }
-
 func (a *App) statusReport(w http.ResponseWriter, r *http.Request) {
 	log.Println("WE GET HERE.")
 	id := chi.URLParam(r, "id")
@@ -128,9 +124,6 @@ func (a *App) statusReport(w http.ResponseWriter, r *http.Request) {
 func statusReportStream(c *websocket.Conn, s *server.McServer) {
 	defer c.Close()
 
-	// Used to decide if we need to report if the server is running.
-	// report_r := true
-
 	go func() {
 		for {
 			_, _, err := c.ReadMessage()
@@ -145,12 +138,31 @@ func statusReportStream(c *websocket.Conn, s *server.McServer) {
 		}
 	}()
 
+	// TODO: Rename this, tv stands for: temporary variable, and tv_p is temoporary value previous
+	tv := true
+	tv_p := false
+
 	for {
 		time.Sleep(time.Second)
 
+		// Tbh I don't know the logic, was feeling fuzzy so I just kinda wrote something and it works so IDK.
+		if tv != tv_p {
+			if tv {
+				tv = false
+				if !s.IsRunning() {
+					c.WriteMessage(websocket.TextMessage, []byte(`{"not_running": true}`))
+					continue
+				}
+
+			}
+		}
+
 		if !s.IsRunning() {
-			c.WriteMessage(websocket.TextMessage, []byte(`{"not_running": true}`))
 			continue
+		} else {
+			if !tv {
+				tv = true
+			}
 		}
 
 		memuse, err := util.GetRssByPid(s.Cmd.Process.Pid)
