@@ -2,7 +2,6 @@ package util
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -33,7 +32,6 @@ func JavaCmd(dir string, jar string, flags string) *exec.Cmd {
 	} else {
 		f = e
 	}
-	log.Printf("CMD_FLAGS: %s\n", f)
 
 	c := exec.Command("java", f...)
 	c.Dir = dir
