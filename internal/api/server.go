@@ -67,6 +67,12 @@ func (a *App) createServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	err = util.CreateServer(s.Name, sf.Version, sf.Build)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	a.sm.AddServer(s.ID, server.NewMcServer(s.Name, "server.jar", ""))
 
 	w.Header().Set("Content-Type", "application/json")
@@ -98,7 +104,6 @@ func (a *App) getAllServers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) statusReport(w http.ResponseWriter, r *http.Request) {
-	log.Println("WE GET HERE.")
 	id := chi.URLParam(r, "id")
 	sid, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
@@ -115,8 +120,6 @@ func (a *App) statusReport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	log.Println("Success... so far anyway.")
 
 	go statusReportStream(c, s)
 }
@@ -138,7 +141,7 @@ func statusReportStream(c *websocket.Conn, s *server.McServer) {
 		}
 	}()
 
-	// TODO: Rename this, tv stands for: temporary variable, and tv_p is temoporary value previous
+	// TODO: Rename this, tv stands for: temporary variable, and tv_p is temoporary variable previous
 	tv := true
 	tv_p := false
 
@@ -198,23 +201,56 @@ func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
 func console(c *websocket.Conn, s *server.McServer) {
 	defer c.Close()
 
-	out := make(chan string)
+	// out := make(chan string)
 
-	if !s.IsStreaming() {
-		s.SetStdout()
-		s.SetStdin()
-		s.ReadStdout(out)
-	}
+	// if !s.IsStreaming() {
+	// 	s.SetStdout()
+	// 	s.SetStdin()
+	// 	s.ReadStdout(out)
+	// }
+
+	go func() {
+		for {
+			_, _, err := c.ReadMessage()
+			if err != nil {
+				if websocket.IsCloseError(err, websocket.CloseNormalClosure) {
+					log.Println("Client disconnected")
+				} else {
+					log.Println("Error reading message:", err)
+				}
+				return
+			}
+		}
+	}()
 
 	for {
-		_, message, err := c.ReadMessage()
-		if err != nil {
-			log.Println("read:", err)
-			break
-		}
-		log.Printf("recv: %s", message)
+		// o := <-out
 
-		o := <-out
-		c.WriteMessage(websocket.TextMessage, []byte(o))
+		if s.Cmd.ProcessState != nil {
+			if s.Cmd.ProcessState.Exited() {
+				c.Close()
+				return
+			}
+		}
+
+		for s.Stdout.Scan() {
+			text := s.Stdout.Text()
+			fmt.Println(text)
+			c.WriteMessage(websocket.TextMessage, []byte(text))
+			// time.Sleep(time.Millisecond * 50)
+		}
+		// fmt.Println(o)
+		// select {
+		// case o := <-out:
+		// 	fmt.Println("RAAHHHHHH")
+		// 	err := c.WriteMessage(websocket.TextMessage, []byte(o))
+		// 	if err != nil {
+		// 		log.Println(err.Error())
+		// 	}
+		// default:
+		// 	fmt.Println("GOOOGLE")
+		// 	c.WriteMessage(websocket.TextMessage, []byte("We are cooked."))
+		// 	time.Sleep(time.Second)
+		// }
 	}
 }

@@ -43,10 +43,6 @@ func (sm *ServerManager) StartServer(id uint) error {
 func (sm *ServerManager) ReadStdout(id uint, c chan string) {
 	s := sm.GetServer(id)
 
-	if s.Stdout == nil {
-		s.SetStdout()
-	}
-
 	s.ReadStdout(c)
 }
 

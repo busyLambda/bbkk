@@ -2,6 +2,9 @@ package util
 
 import (
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
@@ -22,7 +25,7 @@ func GetRssByPid(pid int) (int, error) {
 
 // Formats the flags and the jar args to java so that it's executed properly.
 func JavaCmd(dir string, jar string, flags string) *exec.Cmd {
-	e := []string{"-jar", jar}
+	e := []string{"-jar", jar, "--nogui"}
 
 	j := strings.ReplaceAll(flags, "\n", " ")
 
@@ -37,6 +40,37 @@ func JavaCmd(dir string, jar string, flags string) *exec.Cmd {
 	c.Dir = dir
 
 	return c
+}
+
+// Creates the server on disk
+func CreateServer(name string, version string, build string) error {
+	err := os.MkdirAll(fmt.Sprintf("servers/%s", name), 0777)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(fmt.Sprintf("servers/%s/server.jar", name))
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	jar_name := fmt.Sprintf("paper-%s-%s.jar", version, build)
+	url := fmt.Sprintf("https://api.papermc.io/v2/projects/paper/versions/%s/builds/%s/downloads/%s", version, build, jar_name)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+
+	_, err = io.Copy(file, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func ServerDirName(name string, id string) string {
@@ -66,6 +100,8 @@ type LoginForm struct {
 type ServerForm struct {
 	Name         string `json:"name"`
 	DedicatedRam uint   `json:"dedicated_ram"`
+	Version      string `json:"version"`
+	Build        string `json:"build"`
 }
 
 type UserKey struct{}

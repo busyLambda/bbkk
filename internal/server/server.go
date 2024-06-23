@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
@@ -12,7 +13,7 @@ import (
 
 type McServer struct {
 	Cmd       *exec.Cmd
-	Stdout    io.ReadCloser
+	Stdout    *bufio.Scanner
 	Stdin     io.WriteCloser
 	streaming bool
 	Wg        sync.WaitGroup
@@ -39,7 +40,7 @@ func (ms *McServer) SetStdout() error {
 		return err
 	}
 
-	ms.Stdout = sp
+	ms.Stdout = bufio.NewScanner(sp)
 	return nil
 }
 
@@ -114,26 +115,24 @@ func (ms *McServer) StopStdout() {
 }
 
 func (ms *McServer) ReadStdout(output chan<- string) {
-	log.Printf("Checking process...")
+	defer close(output)
+
 	if ms.Cmd.ProcessState != nil {
 		if ms.Cmd.ProcessState.Exited() {
 			return
 		}
 	}
-	log.Printf("Streaming :3")
 
 	ms.streaming = true
 
-	buf := make([]byte, 1024)
-	for {
-		n, err := ms.Stdout.Read(buf)
-		if err != nil {
-			if err != io.EOF {
-				fmt.Print("-> Error reading from stdout :<")
-			}
-			break
-		}
-		output <- string(buf[:n])
+	for ms.Stdout.Scan() {
+		text := ms.Stdout.Text()
+		fmt.Println(text)
+		// output <- text
+	}
+
+	if err := ms.Stdout.Err(); err != nil {
+		log.Println("Error reading from pipe: ", err)
 	}
 }
 
