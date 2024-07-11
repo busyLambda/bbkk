@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -67,13 +68,14 @@ func (a *App) createServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = util.CreateServer(s.Name, sf.Version, sf.Build)
+	// TODO: Handle this better if it fails.
+	err = util.CreateServer(s.Name, s.ID, sf.Version, sf.Build)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	a.sm.AddServer(s.ID, server.NewMcServer(s.Name, "server.jar", ""))
+	a.sm.AddServer(s.ID, server.NewMcServer(fmt.Sprintf("servers/%s-%d", s.Name, s.ID), "server.jar", ""))
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s)
@@ -201,14 +203,6 @@ func (a *App) openConsole(w http.ResponseWriter, r *http.Request) {
 func console(c *websocket.Conn, s *server.McServer) {
 	defer c.Close()
 
-	// out := make(chan string)
-
-	// if !s.IsStreaming() {
-	// 	s.SetStdout()
-	// 	s.SetStdin()
-	// 	s.ReadStdout(out)
-	// }
-
 	go func() {
 		for {
 			_, _, err := c.ReadMessage()
@@ -224,8 +218,6 @@ func console(c *websocket.Conn, s *server.McServer) {
 	}()
 
 	for {
-		// o := <-out
-
 		if s.Cmd.ProcessState != nil {
 			if s.Cmd.ProcessState.Exited() {
 				c.Close()
@@ -239,18 +231,36 @@ func console(c *websocket.Conn, s *server.McServer) {
 			c.WriteMessage(websocket.TextMessage, []byte(text))
 			// time.Sleep(time.Millisecond * 50)
 		}
-		// fmt.Println(o)
-		// select {
-		// case o := <-out:
-		// 	fmt.Println("RAAHHHHHH")
-		// 	err := c.WriteMessage(websocket.TextMessage, []byte(o))
-		// 	if err != nil {
-		// 		log.Println(err.Error())
-		// 	}
-		// default:
-		// 	fmt.Println("GOOOGLE")
-		// 	c.WriteMessage(websocket.TextMessage, []byte("We are cooked."))
-		// 	time.Sleep(time.Second)
-		// }
 	}
+}
+
+func (a *App) writeConsole(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	sid, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	s := a.sm.GetServer(uint(sid))
+
+	if !s.IsRunning() {
+		http.Error(w, "Server is not running.", http.StatusInternalServerError)
+		return
+	}
+
+	// if !s.IsStreaming() {
+	// 	http.Error(w, "Server is not streaming console.", http.StatusInternalServerError)
+	// 	return
+	// }
+
+	bytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body.", http.StatusInternalServerError)
+		return
+	}
+
+	input := fmt.Sprintf("%s\n", string(bytes))
+
+	s.WriteString(input)
 }

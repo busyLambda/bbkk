@@ -113,7 +113,7 @@ func NewApiMaster() App {
 		i := 1
 		for _, s := range servers {
 			log.Printf("[%d]: %s\n", i, s.Name)
-			sm.AddServer(s.ID, server.NewMcServer(util.ServerDirName(s.Name, strconv.FormatUint(uint64(s.ID), 10)), "server.jar", ""))
+			sm.AddServer(s.ID, server.NewMcServer(util.ServerDirName(s.Name, s.ID), "server.jar", ""))
 			i++
 		}
 	}
@@ -139,7 +139,7 @@ func (a *App) AttachRoutes() {
 	a.r.Use(cors.Handler(
 		cors.Options{
 			AllowedOrigins:   []string{"https://localhost:5173", "http://localhost:5173"},
-			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE"},
 			AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 			ExposedHeaders:   []string{"Link"},
 			AllowCredentials: true,
@@ -155,16 +155,19 @@ func (a *App) AttachRoutes() {
 	accessApi := chi.NewRouter()
 	accessApi.Use(a.authMiddleware)
 
-	a.r.Post("/login", a.login)                         // POST /login
-	serverApi.Get("/console/{id}", a.openConsole)       // GET  /server/console/{id}
-	serverApi.Post("/create", a.createServer)           // POST /server/create
-	serverApi.Get("/name/{query}", a.getServerByName)   // GET  /server/name/{query}
-	serverApi.Get("/all", a.getAllServers)              // GET  /server/all
-	serverApi.Get("/start/{id}", a.startServer)         // GET  /server/start/{id}
-	serverApi.Get("/statusreport/{id}", a.statusReport) // GET  /server/statusreport/{id}
-	serverApi.Get("/stop/{id}", a.stopServer)           // GET  /server/stop/{id}
-	accessApi.Get("/validate", a.validateSession)       // GET  /validate
-	userApi.Get("/create", a.createUser)                // POST /user/create
+	a.r.Post("/login", a.login)                           // POST /login
+	serverApi.Post("/console/write/{id}", a.writeConsole) // POST /server/console/write/{id}
+	serverApi.Get("/console/{id}", a.openConsole)         // GET  /server/console/{id}
+	serverApi.Post("/create", a.createServer)             // POST /server/create
+	serverApi.Get("/name/{query}", a.getServerByName)     // GET  /server/name/{query}
+	serverApi.Get("/all", a.getAllServers)                // GET  /server/all
+	serverApi.Get("/start/{id}", a.startServer)           // GET  /server/start/{id}
+	serverApi.Get("/statusreport/{id}", a.statusReport)   // GET  /server/statusreport/{id}
+	serverApi.Get("/stop/{id}", a.stopServer)             // GET  /server/stop/{id}
+
+	accessApi.Get("/validate", a.validateSession) // GET  /validate
+
+	userApi.Get("/create", a.createUser) // POST /user/create
 
 	a.r.Mount("/", accessApi)       // Protected
 	a.r.Mount("/user", userApi)     // Protected

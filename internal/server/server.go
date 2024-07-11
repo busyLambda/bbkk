@@ -53,7 +53,6 @@ func (ms *McServer) SetStdin() error {
 	return nil
 }
 
-// IDEA: Could try to cat PID as well just to make extra sure (in OR).
 func (ms *McServer) IsRunning() bool {
 	return ms.isRunning
 }

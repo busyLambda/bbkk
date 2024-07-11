@@ -43,13 +43,13 @@ func JavaCmd(dir string, jar string, flags string) *exec.Cmd {
 }
 
 // Creates the server on disk
-func CreateServer(name string, version string, build string) error {
-	err := os.MkdirAll(fmt.Sprintf("servers/%s", name), 0777)
+func CreateServer(name string, id uint, version string, build string) error {
+	err := os.MkdirAll(fmt.Sprintf("servers/%s-%d", name, id), 0777)
 	if err != nil {
 		return err
 	}
 
-	file, err := os.Create(fmt.Sprintf("servers/%s/server.jar", name))
+	file, err := os.Create(fmt.Sprintf("servers/%s-%d/server.jar", name, id))
 	if err != nil {
 		return err
 	}
@@ -73,8 +73,8 @@ func CreateServer(name string, version string, build string) error {
 	return nil
 }
 
-func ServerDirName(name string, id string) string {
-	return fmt.Sprintf("%s-%s", name, id)
+func ServerDirName(name string, id uint) string {
+	return fmt.Sprintf("servers/%s-%d", name, id)
 }
 
 func HashPassword(password string) (string, error) {
